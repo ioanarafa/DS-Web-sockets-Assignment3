@@ -1,0 +1,47 @@
+http:
+  routers:
+
+    auth:
+      rule: "PathPrefix(`/auth`)"
+      service: auth
+      entryPoints: [web]
+      priority: 50
+
+    users:
+      rule: "PathPrefix(`/users`)"
+      service: users
+      entryPoints: [web]
+      priority: 20
+
+    devices:
+      rule: "PathPrefix(`/devices`)"
+      service: devices
+      entryPoints: [web]
+      priority: 20
+
+    monitoring:
+      rule: "PathPrefix(`/monitoring`)"
+      service: monitoring
+      entryPoints: [web]
+      priority: 20
+
+  services:
+    auth:
+      loadBalancer:
+        servers:
+          - url: "http://auth-service:8080"
+
+    users:
+      loadBalancer:
+        servers:
+          - url: "http://user-service:8080"
+
+    devices:
+      loadBalancer:
+        servers:
+          - url: "http://device-service:8080"
+
+    monitoring:
+      loadBalancer:
+        servers:
+          - url: "http://monitoring-service:8080"

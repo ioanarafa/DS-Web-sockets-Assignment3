@@ -1,0 +1,141 @@
+networks:
+  mynet:
+
+services:
+  traefik:
+    image: traefik:v3.1
+    command:
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedByDefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.traefik.address=:8080"
+      - "--api.insecure=true"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./reverse-proxy/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./reverse-proxy/dynamic.yml:/etc/traefik/dynamic/dynamic.yml:ro
+    networks:
+      - mynet
+
+  user-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: user
+      POSTGRES_DB: userdb
+    networks: [mynet]
+
+  device-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: device
+      POSTGRES_PASSWORD: device
+      POSTGRES_DB: devicedb
+    networks: [mynet]
+
+  user-service:
+    build: ./user-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://user-db:5432/userdb
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: user
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: admin
+      SPRING_RABBITMQ_PASSWORD: admin
+    depends_on: [ user-db, rabbitmq ]
+    networks: [ mynet ]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.users.rule=PathPrefix(`/users`)"
+      - "traefik.http.services.users.loadbalancer.server.port=8080"
+
+  device-service:
+    build: ./device-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://device-db:5432/devicedb
+      SPRING_DATASOURCE_USERNAME: device
+      SPRING_DATASOURCE_PASSWORD: device
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: admin
+      SPRING_RABBITMQ_PASSWORD: admin
+    depends_on: [ device-db, rabbitmq ]
+
+    networks: [mynet]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.devices.rule=PathPrefix(`/devices`)"
+      - "traefik.http.services.devices.loadbalancer.server.port=8080"
+
+  auth-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: auth
+      POSTGRES_PASSWORD: auth
+      POSTGRES_DB: authdb
+    networks: [mynet]
+
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://auth-db:5432/authdb
+      SPRING_DATASOURCE_USERNAME: auth
+      SPRING_DATASOURCE_PASSWORD: auth
+    depends_on:
+      - auth-db
+    networks:
+      - mynet
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.entrypoints=web"
+      - "traefik.http.routers.auth.rule=PathPrefix(`/auth`)"
+      - "traefik.http.services.auth.loadbalancer.server.port=8080"
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    networks:
+      - mynet
+
+  monitoring-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: monitoring
+      POSTGRES_PASSWORD: monitoring
+      POSTGRES_DB: monitoringdb
+    networks:
+      - mynet
+
+
+  monitoring-service:
+    build: ./monitoring-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://monitoring-db:5432/monitoringdb
+      SPRING_DATASOURCE_USERNAME: monitoring
+      SPRING_DATASOURCE_PASSWORD: monitoring
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: admin
+      SPRING_RABBITMQ_PASSWORD: admin
+    depends_on:
+      - monitoring-db
+      - rabbitmq
+    networks:
+      - mynet
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.monitoring.rule=PathPrefix(`/monitoring`)"
+      - "traefik.http.services.monitoring.loadbalancer.server.port=8080"
