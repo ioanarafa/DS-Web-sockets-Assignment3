@@ -33,7 +33,6 @@ public class SyncConsumer {
             case "DEVICE" -> handleDevice(type, event);
             case "USER" -> handleUser(type, event);
             default -> {
-                // ignore
             }
         }
     }
@@ -56,7 +55,7 @@ public class SyncConsumer {
             });
             case "DELETED" -> deviceRepo.deleteById(event.getDeviceId());
             default -> {
-                // no-op
+
             }
         }
     }
@@ -79,7 +78,7 @@ public class SyncConsumer {
             });
             case "DELETED" -> userRepo.deleteById(event.getUserId());
             default -> {
-                // no-op
+
             }
         }
     }

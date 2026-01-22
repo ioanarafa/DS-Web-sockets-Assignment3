@@ -67,6 +67,27 @@ public class SimulatorApplication {
 
     private static Properties loadConfig() {
         Properties config = new Properties();
+        
+        // Try environment variables first
+        String deviceId = System.getenv("DEVICE_ID");
+        String rabbitHost = System.getenv("RABBITMQ_HOST");
+        String rabbitPort = System.getenv("RABBITMQ_PORT");
+        String rabbitUser = System.getenv("RABBITMQ_USERNAME");
+        String rabbitPass = System.getenv("RABBITMQ_PASSWORD");
+        String intervalMin = System.getenv("INTERVAL_MINUTES");
+        
+        if (deviceId != null && rabbitHost != null) {
+            config.setProperty("device.id", deviceId);
+            config.setProperty("rabbitmq.host", rabbitHost);
+            config.setProperty("rabbitmq.port", rabbitPort != null ? rabbitPort : "5672");
+            config.setProperty("rabbitmq.username", rabbitUser != null ? rabbitUser : "admin");
+            config.setProperty("rabbitmq.password", rabbitPass != null ? rabbitPass : "admin");
+            config.setProperty("rabbitmq.queue", "device.measurements");
+            config.setProperty("interval.minutes", intervalMin != null ? intervalMin : "10");
+            return config;
+        }
+        
+        // Try config file
         try (FileInputStream fis = new FileInputStream("config.properties")) {
             config.load(fis);
         } catch (IOException e) {

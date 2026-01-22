@@ -1,4 +1,4 @@
-package com.example.monitoring.config;
+package com.example.websocket.config;
 
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
@@ -11,23 +11,17 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-    public static final String MEASUREMENTS_QUEUE = "device.measurements";
-    public static final String SYNC_QUEUE = "sync.events";
     public static final String OVERCONSUMPTION_ALERTS_QUEUE = "overconsumption.alerts";
-
-    @Bean
-    public Queue measurementsQueue() {
-        return new Queue(MEASUREMENTS_QUEUE, true);
-    }
-
-    @Bean
-    public Queue syncQueue() {
-        return new Queue(SYNC_QUEUE, true);
-    }
+    public static final String CHAT_MESSAGES_QUEUE = "chat.messages";
 
     @Bean
     public Queue overconsumptionAlertsQueue() {
         return new Queue(OVERCONSUMPTION_ALERTS_QUEUE, true);
+    }
+
+    @Bean
+    public Queue chatMessagesQueue() {
+        return new Queue(CHAT_MESSAGES_QUEUE, true);
     }
 
     @Bean

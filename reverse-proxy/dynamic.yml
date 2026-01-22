@@ -25,6 +25,18 @@ http:
       entryPoints: [web]
       priority: 20
 
+    websocket:
+      rule: "PathPrefix(`/ws`)"
+      service: websocket
+      entryPoints: [web]
+      priority: 20
+
+    support:
+      rule: "PathPrefix(`/chat`)"
+      service: support
+      entryPoints: [web]
+      priority: 20
+
   services:
     auth:
       loadBalancer:
@@ -45,3 +57,13 @@ http:
       loadBalancer:
         servers:
           - url: "http://monitoring-service:8080"
+
+    websocket:
+      loadBalancer:
+        servers:
+          - url: "http://websocket-service:8084"
+
+    support:
+      loadBalancer:
+        servers:
+          - url: "http://customer-support-service:8085"

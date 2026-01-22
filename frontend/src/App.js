@@ -1,13 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { Zap, Users, Cpu, LogOut, Plus, Edit2, Trash2, Link } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Zap, Users, Cpu, LogOut, Plus, Edit2, Trash2, Link, MessageCircle, Bell, X } from 'lucide-react';
+import SockJS from 'sockjs-client';
+import { Client } from '@stomp/stompjs';
 
 const API_URL = 'http://localhost';
+const WS_URL = 'http://localhost/ws';
 
 const EnergyManagementSystem = () => {
     const [token, setToken] = useState(localStorage.getItem('token'));
     const [userRole, setUserRole] = useState(localStorage.getItem('role'));
     const [username, setUsername] = useState(localStorage.getItem('username'));
+    const [userId, setUserId] = useState(localStorage.getItem('userId'));
     const [currentView, setCurrentView] = useState('login');
+    const [adminMessages, setAdminMessages] = useState([]);
 
     const [loginForm, setLoginForm] = useState({ username: '', password: '' });
     const [users, setUsers] = useState([]);
@@ -15,8 +20,16 @@ const EnergyManagementSystem = () => {
     const [editingUser, setEditingUser] = useState(null);
     const [editingDevice, setEditingDevice] = useState(null);
     const [assignModal, setAssignModal] = useState(null);
+    const [alerts, setAlerts] = useState([]);
+    const [showChat, setShowChat] = useState(false);
+    const [chatMessages, setChatMessages] = useState([]);
+    const [chatInput, setChatInput] = useState('');
+    const [stompClient, setStompClient] = useState(null);
+    const chatEndRef = useRef(null);
 
     useEffect(() => {
+        let client = null;
+        
         if (token && userRole) {
             setCurrentView(userRole === 'ADMIN' ? 'users' : 'client-devices');
             if (userRole === 'ADMIN') {
@@ -25,8 +38,112 @@ const EnergyManagementSystem = () => {
             } else {
                 fetchClientDevices();
             }
+            
+            const socket = new SockJS(WS_URL);
+            client = new Client({
+                webSocketFactory: () => socket,
+                reconnectDelay: 5000,
+                heartbeatIncoming: 4000,
+                heartbeatOutgoing: 4000,
+                onConnect: () => {
+                    console.log('WebSocket connected');
+                    
+                    client.subscribe('/topic/overconsumption', (message) => {
+                        const alert = JSON.parse(message.body);
+                        setAlerts(prev => [...prev, { ...alert, id: Date.now() }]);
+                    });
+                    
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    const currentUserId = payload.userId || payload.sub;
+                    
+                    if (userRole === 'ADMIN') {
+                        client.subscribe('/topic/admin-messages', (message) => {
+                            const chatMsg = JSON.parse(message.body);
+                            console.log('Admin received message:', chatMsg);
+                            setAdminMessages(prev => [...prev, chatMsg]);
+                        });
+                    } else {
+                        client.subscribe(`/topic/client-messages-${currentUserId}`, (message) => {
+                            const chatMsg = JSON.parse(message.body);
+                            console.log('Client received message:', chatMsg);
+                            setChatMessages(prev => [...prev, chatMsg]);
+                        });
+                    }
+                },
+                onStompError: (frame) => {
+                    console.error('STOMP error:', frame);
+                }
+            });
+            client.activate();
+            setStompClient(client);
         }
+        
+        return () => {
+            if (client && client.active) {
+                console.log('Disconnecting WebSocket');
+                client.deactivate();
+            }
+        };
     }, [token, userRole]);
+
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [chatMessages]);
+
+
+    const sendChatMessage = async () => {
+        if (!chatInput.trim()) return;
+        
+        const message = {
+            from: username,
+            fromUserId: parseInt(userId),
+            to: 'admin',
+            toUserId: null,
+            content: chatInput,
+            type: 'USER',
+            timestamp: new Date().toISOString()
+        };
+
+        setChatMessages(prev => [...prev, message]);
+
+        try {
+            const response = await fetch(`${API_URL}/chat/send`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(message)
+            });
+            if (response.ok) {
+                setChatInput('');
+            }
+        } catch (error) {
+            console.error('Error sending message:', error);
+        }
+    };
+    
+    const sendAdminReply = async (toUsername, toUserId, messageContent) => {
+        const message = {
+            from: username,
+            fromUserId: parseInt(userId),
+            to: toUsername,
+            toUserId: toUserId,
+            content: messageContent,
+            type: 'ADMIN',
+            timestamp: new Date().toISOString()
+        };
+
+        try {
+            const response = await fetch(`${API_URL}/chat/send-admin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(message)
+            });
+            if (response.ok) {
+                console.log('Admin reply sent successfully');
+            }
+        } catch (error) {
+            console.error('Error sending admin reply:', error);
+        }
+    };
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -41,14 +158,17 @@ const EnergyManagementSystem = () => {
                 const jwtToken = await response.text();
                 const payload = JSON.parse(atob(jwtToken.split('.')[1]));
                 const role = payload.role || 'CLIENT';
+                const userIdFromToken = payload.userId || payload.sub;
 
                 localStorage.setItem('token', jwtToken);
                 localStorage.setItem('role', role);
                 localStorage.setItem('username', loginForm.username);
+                localStorage.setItem('userId', userIdFromToken);
 
                 setToken(jwtToken);
                 setUserRole(role);
                 setUsername(loginForm.username);
+                setUserId(userIdFromToken);
                 setCurrentView(role === 'ADMIN' ? 'users' : 'client-devices');
             } else {
                 alert('Login failed!');
@@ -286,6 +406,24 @@ const EnergyManagementSystem = () => {
                                 <span className="text-xl font-bold text-white">Energy Admin</span>
                             </div>
                             <div className="flex items-center space-x-4">
+                                {alerts.length > 0 && (
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setAlerts([])}
+                                            className="flex items-center space-x-2 px-4 py-2 bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-400 rounded-lg transition-colors"
+                                        >
+                                            <Bell className="w-4 h-4" />
+                                            <span>{alerts.length}</span>
+                                        </button>
+                                    </div>
+                                )}
+                                <button
+                                    onClick={() => setShowChat(!showChat)}
+                                    className="flex items-center space-x-2 px-4 py-2 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded-lg transition-colors"
+                                >
+                                    <MessageCircle className="w-4 h-4" />
+                                    <span>Support</span>
+                                </button>
                                 <span className="text-slate-300">Welcome, {username}</span>
                                 <button
                                     onClick={handleLogout}
@@ -298,6 +436,31 @@ const EnergyManagementSystem = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* Alerts Display */}
+                {alerts.length > 0 && (
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+                        {alerts.map(alert => (
+                            <div key={alert.id} className="bg-red-600/20 border border-red-500/50 rounded-lg p-4 mb-2">
+                                <div className="flex items-start justify-between">
+                                    <div>
+                                        <h4 className="text-red-400 font-semibold">Overconsumption Alert</h4>
+                                        <p className="text-white text-sm mt-1">{alert.message}</p>
+                                        <p className="text-slate-400 text-xs mt-1">
+                                            Device: {alert.deviceName} | Current: {alert.currentConsumption?.toFixed(2)} kWh | Max: {alert.maxConsumption?.toFixed(2)} kWh
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => setAlerts(prev => prev.filter(a => a.id !== alert.id))}
+                                        className="text-red-400 hover:text-red-300"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
                     <div className="flex space-x-4 mb-8">
@@ -556,6 +719,86 @@ const EnergyManagementSystem = () => {
                         </div>
                     </div>
                 )}
+
+                {/* Admin Chat Interface - Client Messages */}
+                {showChat && (
+                    <div className="fixed bottom-4 right-4 w-[600px] h-[600px] bg-slate-800 rounded-xl shadow-2xl border border-blue-500/20 flex flex-col z-50">
+                        <div className="bg-blue-600/20 px-4 py-3 rounded-t-xl flex items-center justify-between border-b border-blue-500/20">
+                            <h3 className="text-white font-semibold flex items-center space-x-2">
+                                <MessageCircle className="w-5 h-5" />
+                                <span>Client Support Messages</span>
+                            </h3>
+                            <button
+                                onClick={() => setShowChat(false)}
+                                className="text-slate-400 hover:text-white"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                            {adminMessages.length === 0 ? (
+                                <div className="text-center text-slate-400 mt-8">
+                                    <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                    <p>No client messages yet. Waiting for clients...</p>
+                                </div>
+                            ) : (
+                                adminMessages.map((msg, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="bg-slate-700/50 rounded-lg p-4 border border-slate-600"
+                                    >
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center space-x-2">
+                                                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                                                    {msg.from?.charAt(0).toUpperCase() || 'U'}
+                                                </div>
+                                                <div>
+                                                    <div className="text-white font-semibold">{msg.from}</div>
+                                                    <div className="text-xs text-slate-400">
+                                                        {new Date(msg.timestamp).toLocaleTimeString()}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-white mb-3 pl-10">{msg.content}</div>
+                                        <div className="pl-10">
+                                            <div className="flex space-x-2">
+                                                <input
+                                                    type="text"
+                                                    id={`reply-${idx}`}
+                                                    placeholder="Type your reply..."
+                                                    className="flex-1 px-3 py-2 bg-slate-600 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    onKeyPress={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            const input = e.target;
+                                                            if (input.value.trim()) {
+                                                                sendAdminReply(msg.from, msg.fromUserId, input.value);
+                                                                input.value = '';
+                                                            }
+                                                        }
+                                                    }}
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        const input = document.getElementById(`reply-${idx}`);
+                                                        if (input.value.trim()) {
+                                                            sendAdminReply(msg.from, msg.fromUserId, input.value);
+                                                            input.value = '';
+                                                        }
+                                                    }}
+                                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
+                                                >
+                                                    Reply
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                            <div ref={chatEndRef} />
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }
@@ -570,6 +813,24 @@ const EnergyManagementSystem = () => {
                             <span className="text-xl font-bold text-white">My Devices</span>
                         </div>
                         <div className="flex items-center space-x-4">
+                            {alerts.length > 0 && (
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setAlerts([])}
+                                        className="flex items-center space-x-2 px-4 py-2 bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-400 rounded-lg transition-colors"
+                                    >
+                                        <Bell className="w-4 h-4" />
+                                        <span>{alerts.length}</span>
+                                    </button>
+                                </div>
+                            )}
+                            <button
+                                onClick={() => setShowChat(!showChat)}
+                                className="flex items-center space-x-2 px-4 py-2 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded-lg transition-colors"
+                            >
+                                <MessageCircle className="w-4 h-4" />
+                                <span>Support</span>
+                            </button>
                             <span className="text-slate-300">Welcome, {username}</span>
                             <button
                                 onClick={handleLogout}
@@ -582,6 +843,31 @@ const EnergyManagementSystem = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Alerts Display */}
+            {alerts.length > 0 && (
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+                    {alerts.map(alert => (
+                        <div key={alert.id} className="bg-red-600/20 border border-red-500/50 rounded-lg p-4 mb-2">
+                            <div className="flex items-start justify-between">
+                                <div>
+                                    <h4 className="text-red-400 font-semibold">Overconsumption Alert</h4>
+                                    <p className="text-white text-sm mt-1">{alert.message}</p>
+                                    <p className="text-slate-400 text-xs mt-1">
+                                        Device: {alert.deviceName} | Current: {alert.currentConsumption?.toFixed(2)} kWh | Max: {alert.maxConsumption?.toFixed(2)} kWh
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setAlerts(prev => prev.filter(a => a.id !== alert.id))}
+                                    className="text-red-400 hover:text-red-300"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
                 <h2 className="text-2xl font-bold text-white mb-6">Your Energy Devices</h2>
@@ -619,6 +905,71 @@ const EnergyManagementSystem = () => {
                     </div>
                 )}
             </div>
+
+            {/* Chat Interface */}
+            {showChat && (
+                <div className="fixed bottom-4 right-4 w-96 h-[500px] bg-slate-800 rounded-xl shadow-2xl border border-blue-500/20 flex flex-col z-50">
+                    <div className="bg-blue-600/20 px-4 py-3 rounded-t-xl flex items-center justify-between border-b border-blue-500/20">
+                        <h3 className="text-white font-semibold flex items-center space-x-2">
+                            <MessageCircle className="w-5 h-5" />
+                            <span>Customer Support</span>
+                        </h3>
+                        <button
+                            onClick={() => setShowChat(false)}
+                            className="text-slate-400 hover:text-white"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                        {chatMessages.length === 0 ? (
+                            <div className="text-center text-slate-400 mt-8">
+                                <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                <p>Start a conversation with our support bot!</p>
+                            </div>
+                        ) : (
+                            chatMessages.map((msg, idx) => (
+                                <div
+                                    key={idx}
+                                    className={`flex ${msg.type === 'USER' ? 'justify-end' : 'justify-start'}`}
+                                >
+                                    <div
+                                        className={`max-w-[80%] rounded-lg p-3 ${
+                                            msg.type === 'USER'
+                                                ? 'bg-blue-600 text-white'
+                                                : msg.type === 'BOT'
+                                                ? 'bg-slate-700 text-white'
+                                                : 'bg-slate-600 text-white'
+                                        }`}
+                                    >
+                                        <div className="text-xs opacity-75 mb-1">{msg.from}</div>
+                                        <div>{msg.content}</div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                        <div ref={chatEndRef} />
+                    </div>
+                    <div className="p-4 border-t border-slate-700">
+                        <div className="flex space-x-2">
+                            <input
+                                type="text"
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()}
+                                placeholder="Type your message..."
+                                className="flex-1 px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <button
+                                onClick={sendChatMessage}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                            >
+                                Send
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

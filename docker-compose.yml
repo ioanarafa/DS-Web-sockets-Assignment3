@@ -139,3 +139,63 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.monitoring.rule=PathPrefix(`/monitoring`)"
       - "traefik.http.services.monitoring.loadbalancer.server.port=8080"
+
+  websocket-service:
+    build: ./websocket-service
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: admin
+      SPRING_RABBITMQ_PASSWORD: admin
+    depends_on:
+      - rabbitmq
+    networks:
+      - mynet
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.websocket.rule=PathPrefix(`/ws`)"
+      - "traefik.http.services.websocket.loadbalancer.server.port=8084"
+
+  customer-support-service:
+    build: ./customer-support-service
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: admin
+      SPRING_RABBITMQ_PASSWORD: admin
+    depends_on:
+      - rabbitmq
+    networks:
+      - mynet
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.support.rule=PathPrefix(`/chat`)"
+      - "traefik.http.services.support.loadbalancer.server.port=8085"
+
+  device-simulator:
+    build: ./device-simulator
+    environment:
+      DEVICE_ID: 1
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: admin
+      RABBITMQ_PASSWORD: admin
+      INTERVAL_MINUTES: 1
+    depends_on:
+      - rabbitmq
+    networks:
+      - mynet
+
+  device-simulator-2:
+    build: ./device-simulator
+    environment:
+      DEVICE_ID: 2
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: admin
+      RABBITMQ_PASSWORD: admin
+      INTERVAL_MINUTES: 1
+    depends_on:
+      - rabbitmq
+    networks:
+      - mynet
