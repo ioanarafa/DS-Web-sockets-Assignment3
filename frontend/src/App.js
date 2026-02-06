@@ -38,7 +38,7 @@ const EnergyManagementSystem = () => {
             } else {
                 fetchClientDevices();
             }
-            
+            //socket
             const socket = new SockJS(WS_URL);
             client = new Client({
                 webSocketFactory: () => socket,
@@ -90,7 +90,7 @@ const EnergyManagementSystem = () => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [chatMessages]);
 
-
+    //fct chat client
     const sendChatMessage = async () => {
         if (!chatInput.trim()) return;
         
@@ -119,7 +119,7 @@ const EnergyManagementSystem = () => {
             console.error('Error sending message:', error);
         }
     };
-    
+    //fct chat admin
     const sendAdminReply = async (toUsername, toUserId, messageContent) => {
         const message = {
             from: username,
@@ -437,7 +437,7 @@ const EnergyManagementSystem = () => {
                     </div>
                 </div>
 
-                {/* Alerts Display */}
+
                 {alerts.length > 0 && (
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
                         {alerts.map(alert => (
@@ -720,7 +720,7 @@ const EnergyManagementSystem = () => {
                     </div>
                 )}
 
-                {/* Admin Chat Interface - Client Messages */}
+
                 {showChat && (
                     <div className="fixed bottom-4 right-4 w-[600px] h-[600px] bg-slate-800 rounded-xl shadow-2xl border border-blue-500/20 flex flex-col z-50">
                         <div className="bg-blue-600/20 px-4 py-3 rounded-t-xl flex items-center justify-between border-b border-blue-500/20">
@@ -844,7 +844,7 @@ const EnergyManagementSystem = () => {
                 </div>
             </div>
 
-            {/* Alerts Display */}
+
             {alerts.length > 0 && (
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
                     {alerts.map(alert => (
@@ -906,7 +906,6 @@ const EnergyManagementSystem = () => {
                 )}
             </div>
 
-            {/* Chat Interface */}
             {showChat && (
                 <div className="fixed bottom-4 right-4 w-96 h-[500px] bg-slate-800 rounded-xl shadow-2xl border border-blue-500/20 flex flex-col z-50">
                     <div className="bg-blue-600/20 px-4 py-3 rounded-t-xl flex items-center justify-between border-b border-blue-500/20">

@@ -67,8 +67,7 @@ public class SimulatorApplication {
 
     private static Properties loadConfig() {
         Properties config = new Properties();
-        
-        // Try environment variables first
+
         String deviceId = System.getenv("DEVICE_ID");
         String rabbitHost = System.getenv("RABBITMQ_HOST");
         String rabbitPort = System.getenv("RABBITMQ_PORT");
@@ -87,7 +86,7 @@ public class SimulatorApplication {
             return config;
         }
         
-        // Try config file
+
         try (FileInputStream fis = new FileInputStream("config.properties")) {
             config.load(fis);
         } catch (IOException e) {

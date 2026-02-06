@@ -54,7 +54,6 @@ public class EnergyAggregationService {
                     + " at " + hourTimestamp + ": " + record.getTotalConsumption() + " kWh");
         }
 
-        // Check for overconsumption
         checkAndAlertOverconsumption(record);
     }
 

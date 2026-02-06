@@ -9,14 +9,14 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ChatMessage {
-    private String from;           // username
-    private String to;             // username
-    private Long fromUserId;       // user ID for routing
-    private Long toUserId;         // user ID for routing
+    private String from;
+    private String to;
+    private Long fromUserId;
+    private Long toUserId;
     private String content;
     private LocalDateTime timestamp;
-    private String type;           // "USER", "ADMIN", "BOT"
-    private String conversationId; // to group messages by conversation
+    private String type;
+    private String conversationId;
     
     public ChatMessage(String from, String to, String content, String type) {
         this.from = from;
