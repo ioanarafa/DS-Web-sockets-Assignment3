@@ -1,12 +1,6 @@
 # Energy Management System - Assignment 3
 ## WebSockets and Real-Time Communication
 
-**Student:** Rafa Ioana  
-**Group:** 30243  
-**Course:** Distributed Systems 2025
-
----
-
 ## 📋 Overview
 
 This project represents **Assignment 3** - the final phase of a comprehensive Energy Management System built across three progressive assignments. It introduces **real-time communication**, **WebSocket-based notifications**, and **intelligent customer support** to create a fully functional distributed system.
@@ -14,30 +8,30 @@ This project represents **Assignment 3** - the final phase of a comprehensive En
 ### Evolution Across Assignments
 
 #### Assignment 1: Foundation (Request-Reply Communication)
-- ✅ RESTful microservices architecture
-- ✅ User Management Microservice
-- ✅ Device Management Microservice  
-- ✅ Authentication Microservice (JWT-based)
-- ✅ Frontend with Admin and Client roles
-- ✅ Docker deployment with Traefik reverse proxy
+-  RESTful microservices architecture
+-  User Management Microservice
+-  Device Management Microservice  
+-  Authentication Microservice (JWT-based)
+-  Frontend with Admin and Client roles
+-  Docker deployment with Traefik reverse proxy
 
 #### Assignment 2: Asynchronous Communication
-- ✅ Monitoring Microservice for energy consumption tracking
-- ✅ RabbitMQ message broker for asynchronous communication
-- ✅ Device Data Simulator (generates measurements every 10 minutes)
-- ✅ Hourly energy aggregation and storage
-- ✅ User and Device synchronization across microservices
+-  Monitoring Microservice for energy consumption tracking
+-  RabbitMQ message broker for asynchronous communication
+-  Device Data Simulator (generates measurements every 10 minutes)
+-  Hourly energy aggregation and storage
+-  User and Device synchronization across microservices
 
 #### Assignment 3: Real-Time Features (Current)
-- ✨ **WebSocket Microservice** for real-time notifications
-- ✨ **Customer Support Microservice** with rule-based chatbot (12 rules)
-- ✨ **Overconsumption Alerts** sent instantly via WebSocket
-- ✨ **Client-to-Admin Chat** for real-time support
-- ✨ **Enhanced Frontend** with live alerts and chat interface
+-  **WebSocket Microservice** for real-time notifications
+-  **Customer Support Microservice** with rule-based chatbot (12 rules)
+-  **Overconsumption Alerts** sent instantly via WebSocket
+-  **Client-to-Admin Chat** for real-time support
+-  **Enhanced Frontend** with live alerts and chat interface
 
 ---
 
-## 🆕 What's New in Assignment 3
+##  What's New in Assignment 3
 
 ### 1. WebSocket Microservice
 **Purpose:** Enables real-time bidirectional communication between backend and frontend.
@@ -162,54 +156,24 @@ This project represents **Assignment 3** - the final phase of a comprehensive En
 
 ### Build and Run
 
-1. **Clone the repository:**
-```bash
-git clone git@gitlab.com:ioanarafa/ds2025_30243_rafa_ioana_assignment_3.git
-cd ds2025_30243_rafa_ioana_assignment_3
-```
-
-2. **Start all services:**
+1. **Start all services:**
 ```bash
 docker-compose up -d --build
 ```
 
-3. **Wait 30-40 seconds** for all services to initialize
+2. **Wait 30-40 seconds** for all services to initialize
 
-4. **Start the frontend:**
+3. **Start the frontend:**
 ```bash
 cd frontend
 npm install
 npm start
 ```
 
-5. **Access the application:**
+4. **Access the application:**
    - Frontend: http://localhost:3000
    - RabbitMQ Management: http://localhost:15672 (guest/guest)
    - Traefik Dashboard: http://localhost:8080
-
-### Create Admin User
-
-Run the PowerShell script:
-```powershell
-.\create-admin.ps1
-```
-
-**Credentials:**
-- Username: `admin`
-- Password: `admin`
-
-### Create Client User
-
-Run the PowerShell script:
-```powershell
-.\create-client.ps1
-```
-
-**Credentials:**
-- Username: `client1`
-- Password: `client123`
-
----
 
 ## 🧪 Testing Assignment 3 Features
 
@@ -407,135 +371,3 @@ device-simulator-2:
 
 ---
 
-## 🔍 Monitoring and Debugging
-
-### Check Service Status
-```bash
-docker-compose ps
-```
-
-### View Logs
-```bash
-# All services
-docker-compose logs -f
-
-# Specific service
-docker-compose logs -f websocket-service
-docker-compose logs -f customer-support-service
-docker-compose logs -f monitoring-service
-```
-
-### Restart a Service
-```bash
-docker-compose restart websocket-service
-```
-
-### RabbitMQ Management
-- URL: http://localhost:15672
-- Username: `guest`
-- Password: `guest`
-- Check queues, message rates, and consumers
-
-### Frontend Console (F12)
-Look for:
-```
-WebSocket connected!
-Subscribed to overconsumption alerts
-Subscribed to admin messages
-```
-
----
-
-## 🎯 Assignment 3 Requirements Checklist
-
-### Minimum Requirements (5 points)
-- ✅ WebSocket Microservice for overconsumption notifications
-- ✅ Integration with Assignment 2 monitoring system
-- ✅ Rule-based chatbot with 12 rules (> minimum 10)
-- ✅ README file (this document)
-- ✅ Docker deployment
-
-### Additional Features (7 points)
-- ✅ **+2p** Client-to-Admin chat integration
-- ❌ **+1p** AI-driven customer support (not implemented)
-- ❌ **+2p** Load balancing service (not implemented)
-
-### Project Requirements (10 points)
-- ✅ Reverse Proxy (Traefik)
-- ✅ Docker deployment
-- ✅ UML Deployment Diagram (`DiagramAss3.png`)
-
-**Total Implemented: 14/17 points (Minimum + Chat Integration + Project)**
-
----
-
-## 🐛 Common Issues and Solutions
-
-### Issue: Alerts not appearing
-**Solution:**
-1. Check device simulator is running: `docker-compose ps`
-2. Verify measurements are sent: `docker-compose logs -f device-simulator`
-3. Ensure maxConsumption is low (0.5 kWh) for quick testing
-4. Check WebSocket connection in browser console
-
-### Issue: Chat not working
-**Solution:**
-1. Verify WebSocket service is running
-2. Check RabbitMQ connection: http://localhost:15672
-3. Look for errors in customer-support-service logs
-4. Refresh browser and check console for WebSocket errors
-
-### Issue: "Failed to fetch" on login
-**Solution:**
-1. Ensure all services are running: `docker-compose ps`
-2. Wait 30-40 seconds after `docker-compose up`
-3. Check auth-service logs for CORS errors
-4. Restart services: `docker-compose restart`
-
-### Issue: Device simulator not sending data
-**Solution:**
-1. Check if device exists in database
-2. Verify `DEVICE_ID` environment variable in `docker-compose.yml`
-3. Restart simulator: `docker-compose restart device-simulator`
-4. Check logs: `docker-compose logs -f device-simulator`
-
----
-
-## 👨‍💻 Development Notes
-
-### Key Technical Decisions
-
-1. **STOMP over SockJS**: Chosen for cross-browser WebSocket compatibility and fallback support
-2. **RabbitMQ as Message Bus**: Decouples services and ensures reliable message delivery
-3. **Topic-based Broadcasting**: Allows targeted message delivery (admin vs specific client)
-4. **Hybrid Chat System**: Rule-based bot for common queries, human escalation for complex issues
-5. **Real-time Aggregation**: Monitoring service processes measurements on-the-fly
-
-### Future Improvements
-
-- Implement AI-driven customer support (Gemini/OpenAI integration)
-- Add load balancing service with Docker Swarm
-- Implement persistent chat history in database
-- Add typing indicators and read receipts
-- Support file attachments in chat
-- Add push notifications for mobile devices
-
----
-
-## 📚 References
-
-- [Assignment 3 Requirements](a3.pdf)
-- [Spring WebSocket Guide](https://spring.io/guides/gs/messaging-stomp-websocket)
-- [RabbitMQ Documentation](https://www.rabbitmq.com/documentation.html)
-- [STOMP Protocol](https://stomp.github.io/)
-- [Docker Compose Documentation](https://docs.docker.com/compose/)
-
----
-
-## 📝 License
-
-This project is submitted as coursework for **Distributed Systems** course at **Technical University of Cluj-Napoca**.
-
-**Submitted by:** Rafa Ioana  
-**Date:** February 2026  
-**Course:** Distributed Systems 2025-2026
